@@ -244,7 +244,15 @@ function openSettingsModal() {
   const modal = document.getElementById("settings-modal");
   const s = state.settings;
   const tokenInput = document.getElementById("setting-token-input");
-  if (tokenInput) tokenInput.value = s.token ? maskToken(s.token) : "";
+  if (tokenInput) {
+    if (state.tokenStatus === "expired" || s.isStale) {
+      tokenInput.value = "";
+      tokenInput.placeholder = "Token expired - paste new daily token";
+    } else {
+      tokenInput.value = s.token ? maskToken(s.token) : "";
+      tokenInput.placeholder = "Paste daily Upstox token here";
+    }
+  }
   const proxyInput = document.getElementById("setting-proxy-input");
   if (proxyInput) proxyInput.value = s.proxyUrl || "";
   const capitalInput = document.getElementById("setting-capital-input");
@@ -254,7 +262,7 @@ function openSettingsModal() {
 
   if (modal) {
     modal.style.display = "flex";
-    if (!s.token && tokenInput) {
+    if ((!s.token || state.tokenStatus === "expired" || s.isStale) && tokenInput) {
       setTimeout(() => tokenInput.focus(), 100);
     }
   }
@@ -1420,7 +1428,12 @@ function setupEventListeners() {
 
   document.getElementById("save-settings-btn")?.addEventListener("click", async () => {
     const rawTokenInput = document.getElementById("setting-token-input").value.trim();
-    const token = rawTokenInput.startsWith("••••") ? state.settings.token : rawTokenInput;
+    let token = "";
+    if (rawTokenInput.startsWith("••••")) {
+      token = state.settings.token;
+    } else {
+      token = rawTokenInput;
+    }
     const proxyUrl = document.getElementById("setting-proxy-input").value.trim();
     const capital = parseFloat(document.getElementById("setting-capital-input").value) || 1000000;
     const remember = document.getElementById("setting-remember-toggle").checked;

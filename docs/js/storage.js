@@ -18,14 +18,24 @@ const STORAGE_KEYS = {
 };
 
 /**
- * Get current date string in YYYY-MM-DD format (IST / local).
+ * Get current date string in YYYY-MM-DD format (IST).
+ * Upstox market trading day follows Indian Standard Time (Asia/Kolkata).
  */
 export function getTodayDateString() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch (e) {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 }
 
 /**
@@ -46,12 +56,19 @@ export function loadSettings() {
   const remember = localStorage.getItem(STORAGE_KEYS.REMEMBER) === "true";
   const store = remember ? localStorage : sessionStorage;
 
-  const token = store.getItem(STORAGE_KEYS.TOKEN) || localStorage.getItem(STORAGE_KEYS.TOKEN) || sessionStorage.getItem(STORAGE_KEYS.TOKEN) || "";
-  const tokenDate = store.getItem(STORAGE_KEYS.TOKEN_DATE) || localStorage.getItem(STORAGE_KEYS.TOKEN_DATE) || sessionStorage.getItem(STORAGE_KEYS.TOKEN_DATE) || "";
+  let token = store.getItem(STORAGE_KEYS.TOKEN) || localStorage.getItem(STORAGE_KEYS.TOKEN) || sessionStorage.getItem(STORAGE_KEYS.TOKEN) || "";
+  let tokenDate = store.getItem(STORAGE_KEYS.TOKEN_DATE) || localStorage.getItem(STORAGE_KEYS.TOKEN_DATE) || sessionStorage.getItem(STORAGE_KEYS.TOKEN_DATE) || "";
   const proxyUrl = localStorage.getItem(STORAGE_KEYS.PROXY_URL) || "";
   const capitalStr = localStorage.getItem(STORAGE_KEYS.CAPITAL) || "1000000";
   const capital = parseFloat(capitalStr) || 1000000.0;
   const theme = localStorage.getItem(STORAGE_KEYS.THEME) || "dark";
+
+  // Auto-purge legacy mock test tokens from previous selftest runs
+  if (token === "MOCK_EXPIRED_TOKEN") {
+    clearToken();
+    token = "";
+    tokenDate = "";
+  }
 
   const isStale = Boolean(token && tokenDate && tokenDate < getTodayDateString());
 
@@ -78,29 +95,33 @@ export function saveSettings({ token, remember, proxyUrl, capital, theme }) {
 
   const todayStr = getTodayDateString();
 
-  if (token) {
-    const cleanToken = token.trim();
-    const existingToken =
-      localStorage.getItem(STORAGE_KEYS.TOKEN) ||
-      sessionStorage.getItem(STORAGE_KEYS.TOKEN) ||
-      "";
-    const existingDate =
-      localStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
-      sessionStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
-      "";
-    const isNewToken = cleanToken !== existingToken.trim();
-    const dateToStore = (isNewToken || !existingDate) ? todayStr : existingDate;
+  if (token !== undefined) {
+    const cleanToken = (token || "").trim();
+    if (cleanToken) {
+      const existingToken =
+        localStorage.getItem(STORAGE_KEYS.TOKEN) ||
+        sessionStorage.getItem(STORAGE_KEYS.TOKEN) ||
+        "";
+      const existingDate =
+        localStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
+        sessionStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
+        "";
+      const isNewToken = cleanToken !== existingToken.trim();
+      const dateToStore = (isNewToken || !existingDate) ? todayStr : existingDate;
 
-    if (remember) {
-      sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
-      sessionStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
-      localStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
-      localStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
+      if (remember) {
+        sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
+        sessionStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
+        localStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
+        localStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
+        sessionStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
+        sessionStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
+      }
     } else {
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
-      localStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
-      sessionStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
-      sessionStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
+      clearToken();
     }
   }
 }

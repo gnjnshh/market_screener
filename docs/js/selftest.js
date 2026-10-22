@@ -38,6 +38,8 @@ export async function runInBrowserSelfTest() {
     return;
   }
 
+  // Backup user settings before self-test so tests never mutate user configuration
+  const preTestSettings = loadSettings();
   const results = [];
 
   // Check 1: Content-Security-Policy
@@ -212,9 +214,10 @@ export async function runInBrowserSelfTest() {
 
   // Check 7: 401 Expiration Handler without wiping other settings
   try {
-    saveSettings({ token: "MOCK_EXPIRED_TOKEN", capital: 2500000, proxyUrl: "https://proxy.test", remember: true });
-    const valResult = await validateUpstoxToken("MOCK_EXPIRED_TOKEN");
+    saveSettings({ token: "TEST_EXPIRED_PROBE_TOKEN", capital: 2500000, proxyUrl: "https://proxy.test", remember: false });
+    const valResult = await validateUpstoxToken("TEST_EXPIRED_PROBE_TOKEN");
     const settingsAfter = loadSettings();
+    clearToken();
     const passed =
       valResult.valid === false &&
       settingsAfter.capital === 2500000 &&
@@ -229,6 +232,7 @@ export async function runInBrowserSelfTest() {
         : "Settings were erased or invalid token incorrectly verified.",
     });
   } catch (e) {
+    clearToken();
     results.push({ id: "check_401_handler", name: "401 Handler", passed: false, details: e.message });
   }
 
@@ -245,6 +249,19 @@ export async function runInBrowserSelfTest() {
     });
   } catch (e) {
     results.push({ id: "check_lightweight_charts", name: "Chart CDN", passed: false, details: e.message });
+  }
+
+  // Restore pre-test settings so running self-test never pollutes user storage
+  if (preTestSettings.token) {
+    saveSettings(preTestSettings);
+  } else {
+    clearToken();
+    saveSettings({
+      remember: preTestSettings.remember,
+      proxyUrl: preTestSettings.proxyUrl,
+      capital: preTestSettings.capital,
+      theme: preTestSettings.theme,
+    });
   }
 
   // Render Self-Test Modal
