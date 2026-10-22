@@ -1,0 +1,82 @@
+[
+  {
+    "id": "fix_1",
+    "symbol": "RELIANCE",
+    "spot": 2847.0,
+    "volatility": 0.22,
+    "dte": 25.0,
+    "put_wall": 2700.0,
+    "interval": 20.0,
+    "lot_size": 250,
+    "rate": 0.065,
+    "expected_outputs": {
+      "recommended_strike": 2640.0,
+      "expected_move": 163.92,
+      "pop": 91.3
+    }
+  },
+  {
+    "id": "fix_2",
+    "symbol": "TCS",
+    "spot": 4120.0,
+    "volatility": 0.18,
+    "dte": 32.0,
+    "put_wall": 3900.0,
+    "interval": 50.0,
+    "lot_size": 175,
+    "rate": 0.065,
+    "expected_outputs": {
+      "recommended_strike": 3850.0,
+      "expected_move": 219.58,
+      "pop": 91.18
+    }
+  },
+  {
+    "id": "fix_3",
+    "symbol": "HDFCBANK",
+    "spot": 1680.0,
+    "volatility": 0.2,
+    "dte": 18.0,
+    "put_wall": 1600.0,
+    "interval": 10.0,
+    "lot_size": 550,
+    "rate": 0.065,
+    "expected_outputs": {
+      "recommended_strike": 1580.0,
+      "expected_move": 74.62,
+      "pop": 92.39
+    }
+  },
+  {
+    "id": "fix_4",
+    "symbol": "INFY",
+    "spot": 1890.0,
+    "volatility": 0.25,
+    "dte": 40.0,
+    "put_wall": 1700.0,
+    "interval": 20.0,
+    "lot_size": 400,
+    "rate": 0.065,
+    "expected_outputs": {
+      "recommended_strike": 1700.0,
+      "expected_move": 156.42,
+      "pop": 90.74
+    }
+  },
+  {
+    "id": "fix_5",
+    "symbol": "SBIN",
+    "spot": 825.0,
+    "volatility": 0.24,
+    "dte": 15.0,
+    "put_wall": 780.0,
+    "interval": 5.0,
+    "lot_size": 750,
+    "rate": 0.065,
+    "expected_outputs": {
+      "recommended_strike": 775.0,
+      "expected_move": 40.14,
+      "pop": 90.58
+    }
+  }
+]

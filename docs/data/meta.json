@@ -1,0 +1,14 @@
+{
+  "last_updated": "2026-10-22 12:02:41 IST",
+  "timestamp_utc": "2026-10-22T06:32:41.759269+00:00",
+  "market_status": "Open",
+  "data_status": "Success",
+  "total_symbols_scanned": 45,
+  "valid_rows_count": 45,
+  "qualified_count": 15,
+  "watch_count": 1,
+  "rejected_count": 29,
+  "schema_version": "1.0.0",
+  "rejected_rows": [],
+  "errors": []
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VolEdgeIndiaMeta",
+  "type": "object",
+  "required": [
+    "last_updated",
+    "timestamp_utc",
+    "market_status",
+    "data_status",
+    "total_symbols_scanned",
+    "valid_rows_count",
+    "qualified_count",
+    "watch_count",
+    "rejected_count",
+    "schema_version"
+  ],
+  "properties": {
+    "last_updated": { "type": "string" },
+    "timestamp_utc": { "type": "string" },
+    "market_status": { "type": "string", "enum": ["Open", "Closed"] },
+    "data_status": { "type": "string" },
+    "total_symbols_scanned": { "type": "integer", "minimum": 0 },
+    "valid_rows_count": { "type": "integer", "minimum": 0 },
+    "qualified_count": { "type": "integer", "minimum": 0 },
+    "watch_count": { "type": "integer", "minimum": 0 },
+    "rejected_count": { "type": "integer", "minimum": 0 },
+    "schema_version": { "type": "string" },
+    "rejected_rows": { "type": "array" },
+    "errors": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

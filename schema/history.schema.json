@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VolEdgeIndiaHistorySeries",
+  "type": "object",
+  "required": [
+    "symbol",
+    "dates",
+    "closes",
+    "opens",
+    "highs",
+    "lows",
+    "volumes",
+    "iv_series",
+    "rv_series"
+  ],
+  "properties": {
+    "symbol": { "type": "string" },
+    "dates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "closes": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "opens": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "highs": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "lows": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "volumes": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "iv_series": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "rv_series": {
+      "type": "array",
+      "items": { "type": "number" }
+    }
+  }
+}

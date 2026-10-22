@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VolEdgeIndiaRegime",
+  "type": "object",
+  "required": [
+    "last_updated",
+    "multiplier",
+    "regime_state",
+    "risk_off_triggers",
+    "indicators"
+  ],
+  "properties": {
+    "last_updated": { "type": "string" },
+    "multiplier": { "type": "number", "enum": [0.0, 0.5, 1.0] },
+    "regime_state": { "type": "string", "enum": ["risk_on", "cautious", "risk_off"] },
+    "risk_off_triggers": { "type": "array", "items": { "type": "string" } },
+    "indicators": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label", "value", "change", "unit", "state", "description"],
+        "properties": {
+          "label": { "type": "string" },
+          "value": { "type": "number" },
+          "change": { "type": "number" },
+          "unit": { "type": "string" },
+          "state": { "type": "string", "enum": ["risk_on", "neutral", "risk_off"] },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,56 @@
+name: Scheduled Market Scan
+
+on:
+  schedule:
+    # 09:15 IST = 03:45 UTC (Weekdays Mon-Fri)
+    - cron: '45 3 * * 1-5'
+    # 09:30 - 15:15 IST = 04:00 - 09:45 UTC every 15 min
+    - cron: '*/15 4-9 * * 1-5'
+    # 15:30 IST = 10:00 UTC
+    - cron: '0 10 * * 1-5'
+    # 18:30 IST EOD = 13:00 UTC
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scanner/requirements.txt
+
+      - name: Run VolEdge India scanning pipeline
+        env:
+          UPSTOX_ACCESS_TOKEN: ${{ secrets.UPSTOX_ACCESS_TOKEN }}
+        run: |
+          python -m scanner.run docs/data
+
+      - name: Validate output schemas
+        run: |
+          pytest scanner/tests/test_schemas.py -v
+
+      - name: Commit and push updated datasets
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Actions"
+          git add docs/data/
+          if git diff --staged --quiet; then
+            echo "No data changes detected. Skipping commit."
+          else
+            git commit -m "chore(data): automated market scan update [skip ci]"
+            git push
+          fi

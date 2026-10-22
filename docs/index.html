@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VolEdge India — Institutional F&amp;O Put Selling Scanner</title>
+  
+  <!-- Strict Content-Security-Policy -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/lightweight-charts@4.2.0/; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://api.upstox.com https://*.workers.dev; img-src 'self' data:;">
+  
+  <meta name="description" content="Production-ready quantitative Indian F&amp;O put-selling scanner harvesting Volatility Risk Premium (VRP) with 5 calibrated statistical regime pillars.">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Pinned Lightweight Charts CDN with Cryptographic SRI Integrity Hash -->
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"
+          integrity="sha384-OK7vELvjHdhUFi31JYioPIcRHTROLdcDa6ZsNWgvgLaKj+9JqhU0Ad8g4wz3CXjA"
+          crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- Background Ambient Color Orbs -->
+  <div class="orb-container" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- Sticky Top Navigation Bar -->
+    <header class="top-bar glass-card">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">V</div>
+        <div>
+          <div class="brand-title">VolEdge India</div>
+          <div class="brand-subtitle">Quant F&amp;O Put Scanner</div>
+        </div>
+      </div>
+
+      <div class="status-pills">
+        <span id="market-status-pill" class="pill pill-info">Market: Checking...</span>
+        <span id="data-status-pill" class="pill pill-info">Data: EOD</span>
+        <span id="token-status-pill" class="pill pill-watch">
+          <span id="token-status-text">Token: Not set</span>
+        </span>
+        <span class="pill pill-info tabular-nums">
+          <span>Updated: </span>
+          <span id="last-updated-text">-</span>
+        </span>
+      </div>
+
+      <div class="top-actions">
+        <button type="button" id="open-settings-btn" class="btn-icon" title="API Settings &amp; Token" aria-label="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <button type="button" id="theme-toggle-btn" class="btn-icon" title="Toggle Theme" aria-label="Toggle Theme">
+          <span id="theme-toggle-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Informational Notices -->
+    <div id="eod-banner" class="stale-banner" style="display: none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <div>Running in EOD Mode using verified GitHub Actions datasets. To connect live Upstox market quotes, click Settings and enter your developer token.</div>
+    </div>
+
+    <div id="market-stale-banner" class="stale-banner" style="display: none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      <div>Market data has not updated in over 30 minutes during trading hours. New scan cycle pending.</div>
+    </div>
+
+    <!-- Global Macro Regime Strip -->
+    <section class="regime-strip glass-card" aria-label="Macro Market Regime">
+      <div class="regime-header">
+        <div class="regime-title">Macro Regime &amp; Volatility Environment</div>
+        <div id="regime-multiplier-badge" class="regime-multiplier-badge pill-pass">
+          <span>Sizing Multiplier: </span>
+          <span id="regime-multiplier-text">100% (RISK-ON)</span>
+        </div>
+      </div>
+      <div id="regime-grid" class="regime-grid">
+        <!-- Rendered by js/app.js -->
+      </div>
+    </section>
+
+    <!-- Summary Count Cards -->
+    <section class="summary-grid" aria-label="Summary Statistics">
+      <div class="summary-card glass-card">
+        <span class="summary-card-title">Qualified Set</span>
+        <span id="sum-qualified-count" class="summary-card-value tabular-nums" style="color: var(--status-pass-text);">-</span>
+        <span class="summary-card-sub">Passes all 5 pillars &amp; score &gt;= 72</span>
+      </div>
+      <div class="summary-card glass-card">
+        <span class="summary-card-title">Watchlist Set</span>
+        <span id="sum-watch-count" class="summary-card-value tabular-nums" style="color: var(--status-watch-text);">-</span>
+        <span class="summary-card-sub">Score between 60 and 71</span>
+      </div>
+      <div class="summary-card glass-card">
+        <span class="summary-card-title">Rejected Set</span>
+        <span id="sum-rejected-count" class="summary-card-value tabular-nums" style="color: var(--status-reject-text);">-</span>
+        <span class="summary-card-sub">Failed hard guard or score &lt; 60</span>
+      </div>
+      <div class="summary-card glass-card">
+        <span class="summary-card-title">Average Score</span>
+        <span id="sum-avg-score" class="summary-card-value tabular-nums">-</span>
+        <span class="summary-card-sub">Composite 0-100 quantitative scale</span>
+      </div>
+    </section>
+
+    <!-- Interactive Filters & Controls Toolbar (Desktop Grid / Mobile Bottom Sheet) -->
+    <div id="filter-sheet-backdrop" class="filter-sheet-backdrop" aria-hidden="true"></div>
+    <section class="toolbar-card glass-card" id="toolbar-card" aria-label="Filters and Controls">
+      <div class="toolbar-header-mobile">
+        <span style="font-weight: 700; font-size: 15px;">Filters &amp; Sorting</span>
+        <button type="button" id="close-filters-sheet-btn" class="btn-icon" aria-label="Close filters">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="toolbar-grid">
+        <div class="form-group">
+          <label for="filter-search" class="form-label">Search Symbol</label>
+          <input type="text" id="filter-search" class="form-input" placeholder="e.g. RELIANCE, TCS" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="filter-sector" class="form-label">Sector</label>
+          <select id="filter-sector" class="form-select">
+            <option value="ALL">All Sectors</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="filter-verdict" class="form-label">Verdict</label>
+          <select id="filter-verdict" class="form-select">
+            <option value="ALL">All Verdicts</option>
+            <option value="QUALIFIED">Qualified Only</option>
+            <option value="WATCH">Watchlist Only</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="filter-min-score" class="form-label">Min Score (0-100)</label>
+          <input type="number" id="filter-min-score" class="form-input" placeholder="0" min="0" max="100" step="5">
+        </div>
+
+        <div class="form-group">
+          <label for="filter-min-pop" class="form-label">Min POP %</label>
+          <input type="number" id="filter-min-pop" class="form-input" placeholder="0" min="0" max="100" step="5">
+        </div>
+
+        <div class="form-group">
+          <label for="filter-sort" class="form-label">Sort Order</label>
+          <select id="filter-sort" class="form-select">
+            <option value="score_desc">Score (High to Low)</option>
+            <option value="pop_desc">POP (High to Low)</option>
+            <option value="rom_desc">RoM % (High to Low)</option>
+            <option value="spot_desc">Spot Price</option>
+            <option value="iv_desc">Implied Volatility</option>
+            <option value="gap_cover_desc">Gap Cushion Cover</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="justify-content: flex-end;">
+          <label class="form-label">&nbsp;</label>
+          <button type="button" id="refresh-data-btn" class="btn-primary" style="width: 100%; justify-content: center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span id="scan-btn-text">Scan Now</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mobile Filter Trigger Floating / Top Action -->
+    <div class="mobile-filter-bar">
+      <button type="button" id="open-filters-sheet-btn" class="btn-secondary" style="width: 100%; justify-content: center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+        <span>Filter &amp; Sort Options</span>
+      </button>
+    </div>
+
+    <!-- Accessible Live Region for Count Updates -->
+    <div id="aria-result-count" class="sr-only" aria-live="polite" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);"></div>
+
+    <!-- Main Results View -->
+    <main>
+      <!-- Mobile Cards View (< 768px) -->
+      <section id="mobile-cards-container" class="mobile-results" aria-label="Underlying Cards Mobile View">
+        <!-- Rendered by js/app.js -->
+      </section>
+
+      <!-- Desktop Dense Table View (> 768px) with Column Groups A-F -->
+      <section class="desktop-results glass-card" aria-label="Underlying Options Table Desktop View">
+        <div class="table-scroll-wrapper">
+          <table class="scanner-table" id="desktop-scanner-table">
+            <thead>
+              <!-- Tier 1: Pillar Group Header Row -->
+              <tr class="header-group-row">
+                <th colspan="2" class="group-header group-nav">Navigation</th>
+                <th colspan="4" class="group-header group-a">A. Identity</th>
+                <th colspan="6" class="group-header group-b">B. Structure</th>
+                <th colspan="6" class="group-header group-c">C. Volatility Edge</th>
+                <th colspan="6" class="group-header group-d">D. Positioning</th>
+                <th colspan="10" class="group-header group-e">E. Trade Math</th>
+                <th colspan="4" class="group-header group-f">F. Guards &amp; Score</th>
+              </tr>
+              <!-- Tier 2: Individual Sortable Metric Columns with Formula Tooltips -->
+              <tr class="header-columns-row">
+                <!-- Navigation -->
+                <th class="sticky-col-sym" data-sort="symbol" title="Underlying NSE Symbol. Click row to open deep quantitative drawer.">Symbol</th>
+                <th class="sticky-col-verdict" data-sort="verdict" title="Pillar Verdict: QUALIFIED (score >= 72 and all hard guards pass), WATCH (60-71), or REJECTED.">Verdict</th>
+                
+                <!-- A. Identity -->
+                <th data-sort="lot_size" title="Contract standard lot size.">Lot</th>
+                <th data-sort="spot" title="Underlying spot price (live when Upstox token is connected).">Spot</th>
+                <th data-sort="notional" title="Contract notional value: Spot * Lot Size.">Notional</th>
+                <th data-sort="beta_1y" title="1-Year Beta against benchmark Nifty 50: Cov(R_stock, R_nifty) / Var(R_nifty).">Beta 1Y</th>
+
+                <!-- B. Structure -->
+                <th data-sort="spot_200dma" title="Spot / 200-day SMA ratio. Target: 0.95 - 1.15. Rejection: < 0.92 or > 1.30.">200DMA</th>
+                <th data-sort="drawdown_52w" title="Percentage drawdown from 52-week high: (Spot - High52W) / High52W. Rejection: < -30%.">52W DD</th>
+                <th data-sort="rsi_14" title="14-period Wilder RSI. Target: 35 - 55. Rejection: < 28 (falling knife) or > 65.">RSI14</th>
+                <th data-sort="percent_b" title="Bollinger Bands %B (20, 2): (Close - LowerBand) / (UpperBand - LowerBand). Target: 0.10 - 0.50.">%B</th>
+                <th data-sort="adx_14" title="14-day Average Directional Index with +DI and -DI. Rejection: ADX > 30 and -DI > +DI.">ADX14</th>
+                <th data-sort="downvol_ratio_20d" title="DownVol Ratio 20D: downside semi-variance / upside semi-variance. Rejection: > 1.3 with rising delivery.">DownVol</th>
+
+                <!-- C. Volatility Edge -->
+                <th data-sort="iv" title="Current Implied Volatility (annualized %).">IV %</th>
+                <th data-sort="iv_percentile_1y" title="1-Year IV Percentile (0-100%). Target: >= 50%. Rejection: < 30%.">IV Pct</th>
+                <th data-sort="iv_yz_ratio" title="Volatility Risk Premium (VRP) ratio: IV / Yang-Zhang 20D RV. Target: >= 1.15. Rejection: < 1.0.">IV/YZ20</th>
+                <th data-sort="hv10_yz20" title="Short-term Vol Shock: 10D Close-to-Close HV / 20D Yang-Zhang RV. Target: < 1.0. Rejection: > 1.2.">HV10/YZ</th>
+                <th data-sort="skew_25d_pct" title="25-Delta Put Skew Percentile: 25D Put IV / ATM IV vs 1Y history. Rejection: > 90%.">Skew Pct</th>
+                <th data-sort="term_structure" title="Term Structure: Near Month IV / Next Month IV. Target: 0.85 - 1.0. Rejection: > 1.10.">Term Struct</th>
+
+                <!-- D. Positioning -->
+                <th data-sort="put_oi_wall" title="Put Open Interest Wall Strike (maximum open interest support level).">Put Wall</th>
+                <th data-sort="put_wall_oi_change_3d" title="3-Day change in Put Wall open interest %. Rejection: collapse > 20%.">3D OI Chg</th>
+                <th data-sort="bid_ask_spread_pct" title="Bid-Ask Spread % at target strike: (Ask - Bid) / Mid * 100. Target: <= 3%. Rejection: > 5%.">Spread %</th>
+                <th data-sort="mwpl_pct" title="Market-Wide Position Limit utilization %. Target: < 60%. Rejection: >= 80%.">MWPL %</th>
+                <th data-sort="futures_buildup" title="5-Day Futures OI and price classification (Long Buildup, Short Covering, Long Unwinding, Short Buildup).">Buildup</th>
+                <th data-sort="annualized_basis_pct" title="Annualized Futures Basis %: ((Futures - Spot) / Spot) * (365 / DTE). Rejection: Short buildup with negative basis.">Basis %</th>
+
+                <!-- E. Trade Math -->
+                <th data-sort="recommended_strike" title="Target Short Put Strike: highest listed NSE strike <= min(Put Wall, Spot * exp(-1.25 * sigma * sqrt(T))).">Strike</th>
+                <th data-sort="expected_move" title="1-Standard Deviation Expected Move: Spot * sigma * sqrt(T).">Exp Move</th>
+                <th data-sort="pop" title="Risk-Neutral Probability of Expiring Worthless: N(d2). Target: >= 80%. Rejection: < 75%.">POP</th>
+                <th data-sort="p_touch" title="Probability of Touching the short strike prior to expiry: ~ 2 * (1 - POP). Target: <= 40%.">P(touch)</th>
+                <th data-sort="empirical_pop" title="Empirical historical rolling survival rate over DTE days (3-5Y). Target: >= 85%. Rejection: < 78%.">Emp POP</th>
+                <th data-sort="gap_cover" title="Overnight Gap Cushion Cover: Cushion / abs(5th percentile overnight return gap). Target: >= 2.0x. Rejection: < 1.5x.">Gap Cover</th>
+                <th data-sort="credit" title="Gross premium retained per contract lot: Put Bid * Lot Size.">Credit</th>
+                <th data-sort="rom" title="Return on SPAN Margin: (Credit / SPAN Margin) * 100. Target: 1.5 - 4.0%.">RoM %</th>
+                <th data-sort="ev" title="Expected Value of trade under lognormal distribution: Credit - (Model Put Price * Lot Size). Target: > 0.">EV</th>
+                <th data-sort="stress_loss_capital_pct" title="Portfolio stress loss under -2 sigma overnight gap with IV +10 pts. Target: <= 2.0% capital. Rejection: > 3.0%.">Stress %</th>
+
+                <!-- F. Guards & Score -->
+                <th data-sort="score" title="Composite Quantitative Score (0-100) based on all 5 pillars. Qualified >= 72, Watch 60-71, Reject < 60.">Score</th>
+                <th data-sort="event_gap" title="Corporate earnings, dividend, or board meeting before monthly expiry. Rejection: Scheduled event.">Event Gap</th>
+                <th data-sort="fundamental_gate_passed" title="Fundamental Quality Gate: ROE > Sector Median AND TTM PAT YoY >= 10% AND no 2-quarter PAT decline.">Fund Gate</th>
+                <th data-sort="dte" title="Calendar days to monthly derivatives expiration.">DTE</th>
+              </tr>
+            </thead>
+            <tbody id="desktop-table-body">
+              <!-- Rendered dynamically by js/app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div>VolEdge India &bull; Quantitative Options Edge Platform</div>
+      <div style="margin-top: 6px;">For research and educational use only. Not investment advice. Data may be delayed or inaccurate.</div>
+    </footer>
+
+  </div>
+
+  <!-- Detail Drawer for Individual Stock Inspection -->
+  <div id="drawer-backdrop" class="drawer-backdrop" aria-hidden="true"></div>
+  <aside id="detail-drawer" class="detail-drawer" aria-labelledby="drawer-symbol" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <div>
+        <h2 id="drawer-symbol" style="font-size: 18px; font-weight: 700;">Stock Inspection</h2>
+        <div id="drawer-verdict" style="margin-top: 4px;"></div>
+      </div>
+      <button type="button" id="close-drawer-btn" class="btn-icon" aria-label="Close drawer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <!-- Live Broker Quote & Margin Status Banner (when token connected) -->
+    <div id="drawer-live-quote-banner" class="glass-card" style="margin: 0 16px 16px; padding: 12px 16px; display: none; justify-content: space-between; align-items: center;">
+      <div style="font-size: 12px;">
+        <span style="color: var(--text-dim);">Live Spot: </span>
+        <strong id="drawer-live-spot" class="tabular-nums">-</strong>
+        <span style="margin-left: 12px; color: var(--text-dim);">Live Upstox SPAN Margin: </span>
+        <strong id="drawer-live-margin" class="tabular-nums">-</strong>
+      </div>
+      <span class="pill pill-pass" style="font-size: 10px;">Live Upstox Verified</span>
+    </div>
+
+    <!-- Lightweight Charts Tab Navigation -->
+    <div class="chart-tab-bar" style="margin: 0 16px 12px; display: flex; gap: 8px;">
+      <button type="button" id="tab-price-btn" class="btn-sm btn-primary active-tab">Price vs 200DMA</button>
+      <button type="button" id="tab-vol-btn" class="btn-sm btn-secondary">IV vs RV (Yang-Zhang)</button>
+      <button type="button" id="tab-oi-btn" class="btn-sm btn-secondary">Open Interest by Strike</button>
+    </div>
+
+    <!-- Interactive Historical Lightweight Chart Container -->
+    <div id="drawer-chart-box" class="glass-card" style="margin: 0 16px 16px; padding: 12px; min-height: 240px; position: relative;">
+      <div id="chart-container" style="width: 100%; height: 220px;"></div>
+    </div>
+
+    <!-- 5-Pillar Exhaustive Checklist -->
+    <div id="drawer-checklist-container">
+      <!-- Rendered by js/app.js -->
+    </div>
+  </aside>
+
+  <!-- Settings Glass Modal -->
+  <div id="settings-modal" class="modal-backdrop" style="display: none;" role="dialog" aria-labelledby="settings-title" aria-modal="true">
+    <div class="modal-panel glass-card">
+      <div class="modal-header">
+        <h2 id="settings-title" style="font-size: 18px; font-weight: 700;">Settings &amp; Token Configuration</h2>
+        <button type="button" id="close-settings-btn" class="btn-icon" aria-label="Close settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="setting-token-input" class="form-label">Upstox Bearer Access Token</label>
+          <input type="password" id="setting-token-input" class="form-input" placeholder="Paste daily Upstox token here" autocomplete="off">
+          <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Shown masked (last 4 characters only). Stored locally in browser.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="setting-proxy-input" class="form-label">Optional Proxy URL (Cloudflare Worker)</label>
+          <input type="text" id="setting-proxy-input" class="form-input" placeholder="Leave empty for direct browser Upstox API calls" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="setting-capital-input" class="form-label">Trading Capital (INR)</label>
+          <input type="number" id="setting-capital-input" class="form-input" value="1000000" step="50000">
+          <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Used for portfolio sizing and -2 sigma overnight stress testing.</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+          <input type="checkbox" id="setting-remember-toggle" style="width: 18px; height: 18px; accent-color: var(--primary);">
+          <label for="setting-remember-toggle" style="font-size: 12px; color: var(--text-main); cursor: pointer;">
+            Remember on this device (Save in localStorage)
+          </label>
+        </div>
+
+        <div style="padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: var(--radius-sm); font-size: 11px; color: var(--text-dim); line-height: 1.4;">
+          <strong>Security Notice:</strong> Your Upstox token is stored only in this browser and never sent anywhere except directly to Upstox. Do not use on shared or public devices.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="clear-token-btn" class="btn-secondary btn-sm">Clear Token</button>
+        <button type="button" id="clear-all-btn" class="btn-secondary btn-sm">Clear All Data</button>
+        <button type="button" id="save-settings-btn" class="btn-primary btn-sm">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Entry Script (ES Modules) -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>
