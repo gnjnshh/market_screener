@@ -60,6 +60,7 @@
       "skew_25d_pct": { "type": ["number", "null"] },
       "term_structure": { "type": ["number", "null"] },
       "put_oi_wall": { "type": "number" },
+      "zero_gamma": { "type": ["number", "null"] },
       "put_wall_oi_change_3d": { "type": ["number", "null"] },
       "bid_ask_spread_pct": { "type": ["number", "null"] },
       "mwpl_pct": { "type": ["number", "null"] },

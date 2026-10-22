@@ -51,6 +51,7 @@ from scanner.positioning import (
     compute_bid_ask_spread,
     compute_futures_buildup,
     compute_annualized_basis,
+    compute_zero_gamma_level,
 )
 from scanner.trade_math import (
     calculate_recommended_strike,
@@ -187,6 +188,7 @@ def run_pipeline(output_dir: str = "docs/data") -> None:
 
             # Trade Math
             strike_interval = get_strike_interval(sym, spot)
+            zero_gamma = compute_zero_gamma_level(spot, strike_interval, put_wall)
             rec_strike = calculate_recommended_strike(
                 spot=spot,
                 volatility=iv_dec,
@@ -264,6 +266,7 @@ def run_pipeline(output_dir: str = "docs/data") -> None:
                 "term_structure": term_struct,
                 # D. Positioning
                 "put_oi_wall": put_wall,
+                "zero_gamma": zero_gamma,
                 "put_wall_oi_change_3d": put_wall_3d_chg,
                 "bid_ask_spread_pct": bid_ask_spread,
                 "mwpl_pct": mwpl,

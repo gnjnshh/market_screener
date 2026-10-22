@@ -32,8 +32,13 @@ function isAllowedOrigin(origin) {
 
 export default {
   async fetch(request, env, ctx) {
-    const origin = request.headers.get("Origin") || "";
-    const allowedOrigin = isAllowedOrigin(origin) ? origin : "https://github.io";
+    const origin = request.headers.get("Origin");
+
+    if (origin && !isAllowedOrigin(origin)) {
+      return new Response("Forbidden: Origin not authorized", { status: 403 });
+    }
+
+    const allowedOrigin = origin || "*";
 
     // Handle CORS preflight requests
     if (request.method === "OPTIONS") {

@@ -640,6 +640,9 @@ input:focus-visible {
 .sticky-col-sym {
   position: sticky;
   left: 0;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
   background: var(--bg-primary);
   z-index: 5;
   font-weight: 700;
@@ -648,18 +651,82 @@ input:focus-visible {
 
 .scanner-table th.sticky-col-sym {
   z-index: 15;
+  background: var(--table-header-bg);
 }
 
 .sticky-col-verdict {
   position: sticky;
-  left: 110px;
+  left: 100px;
+  width: 230px;
+  min-width: 230px;
+  max-width: 230px;
   background: var(--bg-primary);
   z-index: 5;
   border-right: 1px solid var(--card-border);
+  white-space: normal;
 }
 
 .scanner-table th.sticky-col-verdict {
   z-index: 15;
+  background: var(--table-header-bg);
+}
+
+.verdict-failures {
+  list-style: none;
+  padding: 0;
+  margin: 5px 0 0 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 220px;
+}
+
+.verdict-failure-item {
+  color: var(--status-reject-text);
+  word-break: break-word;
+}
+
+.verdict-watch-item {
+  color: var(--status-watch-text);
+  word-break: break-word;
+}
+
+.verdict-pass-item {
+  color: var(--status-pass-text);
+}
+
+.card-failed-checks {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oi-chart-legend {
+  display: flex;
+  gap: 12px;
+  margin: 0 16px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
 }
 
 /* Detail Drawer */
@@ -942,13 +1009,19 @@ input:focus-visible {
 .scanner-table thead tr.header-columns-row th.sticky-col-sym {
   position: sticky;
   left: 0;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
   z-index: 16;
 }
 
 .scanner-table thead tr.header-group-row th.sticky-col-verdict,
 .scanner-table thead tr.header-columns-row th.sticky-col-verdict {
   position: sticky;
-  left: 110px;
+  left: 100px;
+  width: 230px;
+  min-width: 230px;
+  max-width: 230px;
   z-index: 16;
 }
 

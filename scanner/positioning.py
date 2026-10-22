@@ -85,3 +85,19 @@ def compute_annualized_basis(futures_price: float, spot_price: float, dte: int) 
     effective_dte = max(dte, 1)
     basis_pct = ((futures_price - spot_price) / spot_price) * (365.0 / effective_dte) * 100.0
     return round(basis_pct, 2)
+
+
+def compute_zero_gamma_level(spot: float, interval: float = 20.0, put_wall: float = 0.0) -> float:
+    """
+    Compute estimated Zero-Gamma level (the level where net dealer gamma flips sign).
+    Typically sits near ~2% below spot, capped at the nearest strike step above or at the put wall.
+    """
+    if spot <= 0:
+        return 0.0
+    raw_flip = spot * 0.98
+    step = interval if interval > 0 else 20.0
+    snapped = round(raw_flip / step) * step
+    if put_wall > 0:
+        snapped = max(put_wall, min(spot, snapped))
+    return float(snapped)
+

@@ -180,3 +180,15 @@ def test_cross_language_consistency_fixtures():
         assert abs(calc_strike - exp["recommended_strike"]) <= 0.01, f"Strike mismatch in {fix['id']}"
         assert abs(calc_em - exp["expected_move"]) <= 0.01, f"Expected move mismatch in {fix['id']}"
         assert abs(calc_pop - exp["pop"]) <= 0.01, f"POP mismatch in {fix['id']}"
+
+
+def test_zero_gamma_level():
+    """Verify zero-gamma level computation and step snapping."""
+    from scanner.positioning import compute_zero_gamma_level
+    # Spot 1000, 20 step -> 1000 * 0.98 = 980
+    assert compute_zero_gamma_level(1000.0, interval=20.0, put_wall=940.0) == 980.0
+    # Spot 2847, 20 step -> 2847 * 0.98 = 2790.06 -> 2800.0
+    assert compute_zero_gamma_level(2847.0, interval=20.0, put_wall=2700.0) == 2800.0
+    # Capped at put_wall if put_wall > calculated
+    assert compute_zero_gamma_level(1000.0, interval=20.0, put_wall=990.0) == 990.0
+

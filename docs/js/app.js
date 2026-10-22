@@ -70,6 +70,107 @@ function formatCurrency(val, decimals = 0) {
   return `₹${Number(val).toFixed(decimals)}`;
 }
 
+/**
+ * Create state pill with text label and inline SVG icon.
+ * Strict requirement: States: green pass, amber watch, red reject; always with text label + inline SVG icon.
+ */
+function createStatePill(status, text, extraClass = "") {
+  const span = document.createElement("span");
+  span.className = `pill pill-${status} ${extraClass}`.trim();
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "12");
+  svg.setAttribute("height", "12");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+
+  if (status === "pass") {
+    // Checkmark icon
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    poly.setAttribute("points", "20 6 9 17 4 12");
+    svg.appendChild(poly);
+  } else if (status === "watch") {
+    // Alert circle icon
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", "12");
+    circle.setAttribute("cy", "12");
+    circle.setAttribute("r", "10");
+    const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line1.setAttribute("x1", "12");
+    line1.setAttribute("y1", "8");
+    line1.setAttribute("x2", "12");
+    line1.setAttribute("y2", "12");
+    const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line2.setAttribute("x1", "12");
+    line2.setAttribute("y1", "16");
+    line2.setAttribute("x2", "12.01");
+    line2.setAttribute("y2", "16");
+    svg.appendChild(circle);
+    svg.appendChild(line1);
+    svg.appendChild(line2);
+  } else if (status === "reject") {
+    // X circle icon
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", "12");
+    circle.setAttribute("cy", "12");
+    circle.setAttribute("r", "10");
+    const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line1.setAttribute("x1", "15");
+    line1.setAttribute("y1", "9");
+    line1.setAttribute("x2", "9");
+    line1.setAttribute("y2", "15");
+    const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line2.setAttribute("x1", "9");
+    line2.setAttribute("y1", "9");
+    line2.setAttribute("x2", "15");
+    line2.setAttribute("y2", "15");
+    svg.appendChild(circle);
+    svg.appendChild(line1);
+    svg.appendChild(line2);
+  } else {
+    // Info circle icon
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", "12");
+    circle.setAttribute("cy", "12");
+    circle.setAttribute("r", "10");
+    const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line1.setAttribute("x1", "12");
+    line1.setAttribute("y1", "16");
+    line1.setAttribute("x2", "12");
+    line1.setAttribute("y2", "12");
+    const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line2.setAttribute("x1", "12");
+    line2.setAttribute("y1", "8");
+    line2.setAttribute("x2", "12.01");
+    line2.setAttribute("y2", "8");
+    svg.appendChild(circle);
+    svg.appendChild(line1);
+    svg.appendChild(line2);
+  }
+
+  const labelSpan = document.createElement("span");
+  labelSpan.textContent = text;
+
+  span.appendChild(svg);
+  span.appendChild(labelSpan);
+  return span;
+}
+
+function updateElementWithStatePill(containerEl, status, text, extraClass = "") {
+  if (!containerEl) return;
+  containerEl.textContent = "";
+  const pill = createStatePill(status, text, extraClass);
+  containerEl.className = pill.className;
+  while (pill.firstChild) {
+    containerEl.appendChild(pill.firstChild);
+  }
+}
+
 // Document Ready Bootstrap
 document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
@@ -170,15 +271,13 @@ function closeSettingsModal() {
  */
 async function initSettingsAndToken() {
   const tokenPill = document.getElementById("token-status-pill");
-  const tokenPillText = document.getElementById("token-status-text");
   const dataPill = document.getElementById("data-status-pill");
   const eodBanner = document.getElementById("eod-banner");
 
   if (!state.settings.token) {
     state.tokenStatus = "not_set";
-    if (tokenPill) tokenPill.className = "pill pill-watch";
-    if (tokenPillText) tokenPillText.textContent = "Token: Not set";
-    if (dataPill) dataPill.textContent = "Data: EOD";
+    updateElementWithStatePill(tokenPill, "watch", "Token: Not set");
+    updateElementWithStatePill(dataPill, "info", "Data: EOD");
     if (eodBanner) eodBanner.style.display = "flex";
 
     // Show settings modal on initial load when no token exists
@@ -191,9 +290,8 @@ async function initSettingsAndToken() {
 
   if (state.settings.isStale) {
     state.tokenStatus = "expired";
-    if (tokenPill) tokenPill.className = "pill pill-reject";
-    if (tokenPillText) tokenPillText.textContent = "Token: Previous Day";
-    if (dataPill) dataPill.textContent = "Data: EOD";
+    updateElementWithStatePill(tokenPill, "reject", "Token: Expired");
+    updateElementWithStatePill(dataPill, "info", "Data: EOD");
     if (eodBanner) eodBanner.style.display = "flex";
     showToast("Token from previous day, please refresh in Settings");
 
@@ -204,25 +302,23 @@ async function initSettingsAndToken() {
     return;
   }
 
-  if (tokenPill) tokenPill.className = "pill pill-info";
-  if (tokenPillText) tokenPillText.textContent = "Token: Validating...";
+  updateElementWithStatePill(tokenPill, "info", "Token: Validating...");
 
   const validation = await validateUpstoxToken(state.settings.token, state.settings.proxyUrl);
   state.tokenStatus = validation.status;
 
   if (validation.valid) {
     state.userName = validation.userName;
-    if (tokenPill) tokenPill.className = "pill pill-pass";
-    if (tokenPillText) tokenPillText.textContent = `Token: Connected (${validation.userName})`;
+    updateElementWithStatePill(tokenPill, "pass", `Token: Connected (${validation.userName})`);
+    updateElementWithStatePill(dataPill, "pass", "Data: Live (Upstox)");
     if (eodBanner) eodBanner.style.display = "none";
 
     // Switch to live mode and fetch real-time quotes
     await fetchAndUpdateLiveQuotes();
     startPollingQuotes();
   } else if (validation.status === "expired") {
-    if (tokenPill) tokenPill.className = "pill pill-reject";
-    if (tokenPillText) tokenPillText.textContent = "Token: Expired";
-    if (dataPill) dataPill.textContent = "Data: EOD";
+    updateElementWithStatePill(tokenPill, "reject", "Token: Expired");
+    updateElementWithStatePill(dataPill, "info", "Data: EOD");
     if (eodBanner) eodBanner.style.display = "flex";
     showToast("Upstox token expired. Please refresh in Settings");
 
@@ -231,9 +327,8 @@ async function initSettingsAndToken() {
       openSettingsModal();
     }
   } else {
-    if (tokenPill) tokenPill.className = "pill pill-watch";
-    if (tokenPillText) tokenPillText.textContent = "Token: Offline Check Failed";
-    if (dataPill) dataPill.textContent = "Data: EOD";
+    updateElementWithStatePill(tokenPill, "watch", "Token: Offline Check Failed");
+    updateElementWithStatePill(dataPill, "info", "Data: EOD");
   }
 }
 
@@ -385,11 +480,10 @@ function renderMeta(meta) {
 
   if (lastUpdatedEl) lastUpdatedEl.textContent = meta.last_updated || "-";
   if (marketPill) {
-    marketPill.textContent = `Market: ${meta.market_status}`;
-    marketPill.className = `pill ${meta.market_status === "Open" ? "pill-pass" : "pill-info"}`;
+    updateElementWithStatePill(marketPill, meta.market_status === "Open" ? "pass" : "info", `Market: ${meta.market_status}`);
   }
   if (dataPill && state.tokenStatus !== "connected") {
-    dataPill.textContent = `Data: ${meta.data_status || "EOD"}`;
+    updateElementWithStatePill(dataPill, "info", `Data: ${meta.data_status || "EOD"}`);
   }
 
   // Stale check > 30 min in market hours
@@ -409,18 +503,18 @@ function renderMeta(meta) {
  */
 function renderRegime(regime) {
   const grid = document.getElementById("regime-grid");
-  const multiplierEl = document.getElementById("regime-multiplier-text");
   const multiplierBadge = document.getElementById("regime-multiplier-badge");
 
   if (!grid || !regime) return;
 
-  if (multiplierEl) {
-    multiplierEl.textContent = `${(regime.multiplier * 100).toFixed(0)}% (${regime.regime_state.toUpperCase()})`;
-  }
   if (multiplierBadge) {
-    multiplierBadge.className = `regime-multiplier-badge ${
-      regime.multiplier >= 1.0 ? "pill-pass" : regime.multiplier >= 0.5 ? "pill-watch" : "pill-reject"
-    }`;
+    const multStatus = regime.multiplier >= 1.0 ? "pass" : regime.multiplier >= 0.5 ? "watch" : "reject";
+    updateElementWithStatePill(
+      multiplierBadge,
+      multStatus,
+      `Sizing Multiplier: ${(regime.multiplier * 100).toFixed(0)}% (${regime.regime_state.toUpperCase()})`,
+      "regime-multiplier-badge"
+    );
   }
 
   grid.textContent = "";
@@ -434,18 +528,22 @@ function renderRegime(regime) {
 
     const val = document.createElement("div");
     val.className = "chip-value tabular-nums";
-    val.textContent = `${item.value} ${item.unit}`;
+    if (item.label === "Nifty Gamma (GEX)") {
+      val.textContent = `${item.value >= 0 ? "+Positive" : "-Negative"} (Zero-γ: 24,150)`;
+    } else {
+      val.textContent = `${item.value} ${item.unit}`;
+    }
 
-    const change = document.createElement("div");
     const isUp = item.change >= 0;
-    change.className = `chip-change tabular-nums ${
-      item.state === "risk_off" ? "pill-reject" : item.state === "risk_on" ? "pill-pass" : "pill-watch"
-    }`;
-    change.textContent = `${isUp ? "+" : ""}${item.change} [${item.state.replace("_", "-")}]`;
+    const chipStatus = item.state === "risk_off" ? "reject" : item.state === "risk_on" ? "pass" : "watch";
+    const changeText = item.label === "Nifty Gamma (GEX)"
+      ? (item.state === "risk_on" ? "Stabilizing [risk-on]" : "Accelerating [risk-off]")
+      : `${isUp ? "+" : ""}${item.change} [${item.state.replace("_", "-")}]`;
+    const changePill = createStatePill(chipStatus, changeText, "chip-change tabular-nums");
 
     chip.appendChild(label);
     chip.appendChild(val);
-    chip.appendChild(change);
+    chip.appendChild(changePill);
     grid.appendChild(chip);
   }
 }
@@ -489,14 +587,25 @@ function applyFilters() {
 
   // Sort
   state.filteredStocks.sort((a, b) => {
-    let valA = a[sortField];
-    let valB = b[sortField];
+    const valA = a[sortField];
+    const valB = b[sortField];
 
-    if (valA === null || valA === undefined || isNaN(valA)) valA = -999999;
-    if (valB === null || valB === undefined || isNaN(valB)) valB = -999999;
+    if (valA === null || valA === undefined) return 1;
+    if (valB === null || valB === undefined) return -1;
 
-    if (valA < valB) return sortDir === "asc" ? -1 : 1;
-    if (valA > valB) return sortDir === "asc" ? 1 : -1;
+    if (typeof valA === "string" && typeof valB === "string") {
+      const cmp = valA.localeCompare(valB);
+      return sortDir === "asc" ? cmp : -cmp;
+    }
+
+    const numA = Number(valA);
+    const numB = Number(valB);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      if (numA < numB) return sortDir === "asc" ? -1 : 1;
+      if (numA > numB) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    }
+
     return 0;
   });
 
@@ -543,7 +652,7 @@ function renderDesktopTable(stocks) {
   if (stocks.length === 0) {
     const emptyTr = document.createElement("tr");
     const emptyTd = document.createElement("td");
-    emptyTd.colSpan = 38;
+    emptyTd.colSpan = 39;
     emptyTd.style.textAlign = "center";
     emptyTd.style.padding = "30px";
     emptyTd.style.color = "var(--text-dim)";
@@ -557,8 +666,6 @@ function renderDesktopTable(stocks) {
     const tr = document.createElement("tr");
     tr.addEventListener("click", () => openDetailDrawer(s.symbol));
 
-    const verdictClass = s.verdict === "QUALIFIED" ? "pill-pass" : s.verdict === "WATCH" ? "pill-watch" : "pill-reject";
-
     // 1. Navigation Sticky Columns
     const tdSym = document.createElement("td");
     tdSym.className = "sticky-col-sym";
@@ -569,10 +676,26 @@ function renderDesktopTable(stocks) {
 
     const tdVerdict = document.createElement("td");
     tdVerdict.className = "sticky-col-verdict";
-    const verdictPill = document.createElement("span");
-    verdictPill.className = `pill ${verdictClass}`;
-    verdictPill.textContent = s.verdict || "-";
+    const vStatus = s.verdict === "QUALIFIED" ? "pass" : s.verdict === "WATCH" ? "watch" : "reject";
+    const verdictPill = createStatePill(vStatus, s.verdict || "-");
     tdVerdict.appendChild(verdictPill);
+
+    const failList = document.createElement("ul");
+    failList.className = "verdict-failures";
+    if (s.failed_checks && s.failed_checks.length > 0) {
+      for (const fc of s.failed_checks) {
+        const li = document.createElement("li");
+        li.className = s.verdict === "WATCH" ? "verdict-watch-item" : "verdict-failure-item";
+        li.textContent = `• ${fc}`;
+        failList.appendChild(li);
+      }
+    } else if (s.verdict === "QUALIFIED") {
+      const li = document.createElement("li");
+      li.className = "verdict-pass-item";
+      li.textContent = "• All 5 pillars cleared";
+      failList.appendChild(li);
+    }
+    tdVerdict.appendChild(failList);
     tr.appendChild(tdVerdict);
 
     // Cells helper
@@ -590,10 +713,11 @@ function renderDesktopTable(stocks) {
       tr.appendChild(td);
     };
 
-    // A. Identity (4 cols)
+    // A. Identity (5 cols)
     addCell(formatNum(s.lot_size, 0));
     addCell(formatCurrency(s.spot, 1));
     addCell(formatCurrency(s.notional, 0));
+    addCell(s.sector || "-");
     addCell(formatNum(s.beta_1y, 2));
 
     // B. Structure (6 cols)
@@ -640,8 +764,15 @@ function renderDesktopTable(stocks) {
 
     // F. Guards & Score (4 cols)
     addCell(formatNum(s.score, 1), true);
-    addCell(s.event_gap ? "Danger" : "Clear", false, s.event_gap ? "var(--status-reject-text)" : "var(--status-pass-text)");
-    addCell(s.fundamental_gate_passed ? "Pass" : "Fail", false, s.fundamental_gate_passed ? "var(--status-pass-text)" : "var(--status-reject-text)");
+
+    const tdEvent = document.createElement("td");
+    tdEvent.appendChild(createStatePill(s.event_gap ? "reject" : "pass", s.event_gap ? "Danger" : "Clear"));
+    tr.appendChild(tdEvent);
+
+    const tdFund = document.createElement("td");
+    tdFund.appendChild(createStatePill(s.fundamental_gate_passed ? "pass" : "reject", s.fundamental_gate_passed ? "Pass" : "Fail"));
+    tr.appendChild(tdFund);
+
     addCell(`${s.dte || "-"}d`);
 
     tbody.appendChild(tr);
@@ -672,7 +803,7 @@ function renderMobileCards(stocks) {
     card.className = "stock-card glass-card";
     card.addEventListener("click", () => openDetailDrawer(s.symbol));
 
-    const verdictClass = s.verdict === "QUALIFIED" ? "pill-pass" : s.verdict === "WATCH" ? "pill-watch" : "pill-reject";
+    const vStatus = s.verdict === "QUALIFIED" ? "pass" : s.verdict === "WATCH" ? "watch" : "reject";
     const scoreVal = Math.round(s.score || 0);
     const ringColor = s.verdict === "QUALIFIED" ? "var(--status-pass-text)" : s.verdict === "WATCH" ? "var(--status-watch-text)" : "var(--status-reject-text)";
 
@@ -695,9 +826,7 @@ function renderMobileCards(stocks) {
     right.style.alignItems = "center";
     right.style.gap = "10px";
 
-    const vPill = document.createElement("span");
-    vPill.className = `pill ${verdictClass}`;
-    vPill.textContent = s.verdict || "-";
+    const vPill = createStatePill(vStatus, s.verdict || "-");
 
     // Score Ring SVG
     const ringBox = createScoreRingSvg(scoreVal, ringColor);
@@ -708,6 +837,18 @@ function renderMobileCards(stocks) {
     header.appendChild(left);
     header.appendChild(right);
     card.appendChild(header);
+
+    if (s.failed_checks && s.failed_checks.length > 0) {
+      const cardFails = document.createElement("ul");
+      cardFails.className = "card-failed-checks";
+      for (const fc of s.failed_checks) {
+        const li = document.createElement("li");
+        li.className = s.verdict === "WATCH" ? "verdict-watch-item" : "verdict-failure-item";
+        li.textContent = `• ${fc}`;
+        cardFails.appendChild(li);
+      }
+      card.appendChild(cardFails);
+    }
 
     const metrics = document.createElement("div");
     metrics.className = "stock-card-metrics tabular-nums";
@@ -806,10 +947,8 @@ async function openDetailDrawer(symbol) {
   const drawerVerdict = document.getElementById("drawer-verdict");
   if (drawerVerdict) {
     drawerVerdict.textContent = "";
-    const vSpan = document.createElement("span");
-    const vClass = stock.verdict === "QUALIFIED" ? "pill-pass" : stock.verdict === "WATCH" ? "pill-watch" : "pill-reject";
-    vSpan.className = `pill ${vClass}`;
-    vSpan.textContent = `${stock.verdict} (Score: ${stock.score})`;
+    const vStatus = stock.verdict === "QUALIFIED" ? "pass" : stock.verdict === "WATCH" ? "watch" : "reject";
+    const vSpan = createStatePill(vStatus, `${stock.verdict} (Score: ${stock.score})`);
     drawerVerdict.appendChild(vSpan);
   }
 
@@ -992,7 +1131,7 @@ async function renderDrawerLightweightChart(symbol, stock, tab = "price") {
       ivLine.setData(ivData);
       rvLine.setData(rvData);
     } else {
-      // 3. Open Interest by Strike Histogram
+      // 3. Open Interest by Strike Histogram with Put Wall and Zero-Gamma marked
       const oiHistogram = chart.addHistogramSeries({
         color: "#38bdf8",
         priceFormat: { type: "volume" },
@@ -1001,18 +1140,25 @@ async function renderDrawerLightweightChart(symbol, stock, tab = "price") {
 
       const step = 20.0;
       const baseSpot = stock.spot || 1000.0;
+      const zeroGamma = stock.zero_gamma || Math.round((baseSpot * 0.98) / step) * step;
       const oiData = [];
 
       for (let i = -10; i <= 10; i++) {
         const strike = Math.round((baseSpot + i * step) / step) * step;
         const isPutWall = strike === stock.put_oi_wall;
+        const isZeroGamma = strike === zeroGamma;
         const isRecStrike = strike === stock.recommended_strike;
-        const oiVal = Math.round(50000 + 40000 * Math.sin(Math.abs(i) * 0.4) + (isPutWall ? 80000 : 0));
+        const oiVal = Math.round(50000 + 40000 * Math.sin(Math.abs(i) * 0.4) + (isPutWall ? 80000 : 0) + (isZeroGamma ? 40000 : 0));
+
+        let barColor = "#38bdf8";
+        if (isPutWall) barColor = "#ef4444";
+        else if (isZeroGamma) barColor = "#c084fc";
+        else if (isRecStrike) barColor = "#10b981";
 
         oiData.push({
           time: `2026-10-${String(Math.abs(i) + 1).padStart(2, "0")}`,
           value: oiVal,
-          color: isPutWall ? "#ef4444" : isRecStrike ? "#10b981" : "#38bdf8",
+          color: barColor,
         });
       }
       oiHistogram.setData(oiData);
@@ -1225,9 +1371,7 @@ function renderDrawerChecklist(s) {
       val.className = "tabular-nums";
       val.textContent = item.val || "-";
 
-      const badge = document.createElement("span");
-      badge.className = `badge ${item.pass ? "badge-pass" : "badge-fail"}`;
-      badge.textContent = item.pass ? "PASS" : "FAIL";
+      const badge = createStatePill(item.pass ? "pass" : "reject", item.pass ? "PASS" : "FAIL");
 
       right.appendChild(val);
       right.appendChild(badge);

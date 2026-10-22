@@ -80,16 +80,27 @@ export function saveSettings({ token, remember, proxyUrl, capital, theme }) {
 
   if (token) {
     const cleanToken = token.trim();
+    const existingToken =
+      localStorage.getItem(STORAGE_KEYS.TOKEN) ||
+      sessionStorage.getItem(STORAGE_KEYS.TOKEN) ||
+      "";
+    const existingDate =
+      localStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
+      sessionStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
+      "";
+    const isNewToken = cleanToken !== existingToken.trim();
+    const dateToStore = (isNewToken || !existingDate) ? todayStr : existingDate;
+
     if (remember) {
       sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
       sessionStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
       localStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
-      localStorage.setItem(STORAGE_KEYS.TOKEN_DATE, todayStr);
+      localStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
     } else {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
       sessionStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
-      sessionStorage.setItem(STORAGE_KEYS.TOKEN_DATE, todayStr);
+      sessionStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
     }
   }
 }

@@ -251,6 +251,51 @@ export async function runInBrowserSelfTest() {
   renderSelfTestModal(results);
 }
 
+function createStateBadge(passed) {
+  const badge = document.createElement("span");
+  badge.className = `badge ${passed ? "badge-pass" : "badge-fail"}`;
+  badge.style.display = "inline-flex";
+  badge.style.alignItems = "center";
+  badge.style.gap = "4px";
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "10");
+  svg.setAttribute("height", "10");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "3");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+
+  if (passed) {
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    poly.setAttribute("points", "20 6 9 17 4 12");
+    svg.appendChild(poly);
+  } else {
+    const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line1.setAttribute("x1", "18");
+    line1.setAttribute("y1", "6");
+    line1.setAttribute("x2", "6");
+    line1.setAttribute("y2", "18");
+    const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line2.setAttribute("x1", "6");
+    line2.setAttribute("y1", "6");
+    line2.setAttribute("x2", "18");
+    line2.setAttribute("y2", "18");
+    svg.appendChild(line1);
+    svg.appendChild(line2);
+  }
+
+  const text = document.createElement("span");
+  text.textContent = passed ? "PASS" : "FAIL";
+
+  badge.appendChild(svg);
+  badge.appendChild(text);
+  return badge;
+}
+
 function renderSelfTestModal(results) {
   const existing = document.getElementById("voledge-selftest-modal");
   if (existing) existing.remove();
@@ -307,9 +352,7 @@ function renderSelfTestModal(results) {
     left.appendChild(name);
     left.appendChild(details);
 
-    const badge = document.createElement("span");
-    badge.className = `badge ${item.passed ? "badge-pass" : "badge-fail"}`;
-    badge.textContent = item.passed ? "PASS" : "FAIL";
+    const badge = createStateBadge(item.passed);
 
     row.appendChild(left);
     row.appendChild(badge);
