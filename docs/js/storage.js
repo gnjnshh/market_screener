@@ -19,6 +19,17 @@ const STORAGE_KEYS = {
 };
 
 /**
+ * Clean token string: strips 'Bearer ', quotes, and whitespace.
+ */
+export function cleanTokenString(token) {
+  if (!token) return "";
+  return String(token)
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/[\r\n\t "']/g, "");
+}
+
+/**
  * Get current date string in YYYY-MM-DD format (IST).
  * Upstox market trading day follows Indian Standard Time (Asia/Kolkata).
  */
@@ -47,7 +58,7 @@ export function getTodayDateString() {
 export function parseJwt(token) {
   if (!token) return null;
   try {
-    const clean = token.trim().replace(/^Bearer\s+/i, "");
+    const clean = cleanTokenString(token);
     const parts = clean.split(".");
     if (parts.length < 2) return null;
     const base64Url = parts[1];
@@ -69,7 +80,7 @@ export function parseJwt(token) {
  */
 export function maskToken(token) {
   if (!token) return "";
-  const trimmed = token.trim().replace(/^Bearer\s+/i, "");
+  const trimmed = cleanTokenString(token);
   if (trimmed.length <= 4) return trimmed;
   const last4 = trimmed.slice(-4);
   return `••••••••••••${last4}`;
@@ -89,6 +100,8 @@ export function loadSettings() {
   const capitalStr = localStorage.getItem(STORAGE_KEYS.CAPITAL) || "1000000";
   const capital = parseFloat(capitalStr) || 1000000.0;
   const theme = localStorage.getItem(STORAGE_KEYS.THEME) || "dark";
+
+  token = cleanTokenString(token);
 
   // Auto-purge legacy mock test tokens from previous selftest runs
   if (token === "MOCK_EXPIRED_TOKEN") {
@@ -112,7 +125,7 @@ export function loadSettings() {
   }
 
   return {
-    token: token.trim().replace(/^Bearer\s+/i, ""),
+    token,
     tokenDate,
     remember,
     proxyUrl: proxyUrl.trim(),
@@ -136,8 +149,7 @@ export function saveSettings({ token, remember, proxyUrl, capital, theme }) {
   const todayStr = getTodayDateString();
 
   if (token !== undefined) {
-    // Sanitize token: remove leading "Bearer " prefix if user pasted it
-    const cleanToken = (token || "").trim().replace(/^Bearer\s+/i, "");
+    const cleanToken = cleanTokenString(token);
     if (cleanToken) {
       if (remember) {
         sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
@@ -177,17 +189,18 @@ export function clearAllData() {
 }
 
 /**
- * Validate Upstox token.
- * Supports both:
- * 1. Interactive / Trading OAuth Tokens (via /v2/user/profile)
- * 2. Analytics Tokens / Market Data Feed Tokens (via /v2/market-quote/quotes)
+ * Validate Upstox token using Market Data API (v3) with fallback to User Profile.
+ * Correctly distinguishes between:
+ * 1. Connected (Active token)
+ * 2. IP Restricted (Static IP required by Upstox account)
+ * 3. Expired / Invalid
  */
 export async function validateUpstoxToken(token, proxyUrl = "") {
   if (!token) {
     return { status: "not_set", label: "Not set", valid: false };
   }
 
-  const cleanToken = token.trim().replace(/^Bearer\s+/i, "");
+  const cleanToken = cleanTokenString(token);
 
   // If token is a JWT, check exp timestamp first
   const payload = parseJwt(cleanToken);
@@ -205,34 +218,10 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
 
   const base = proxyUrl ? proxyUrl.replace(/\/+$/, "") : "https://api.upstox.com";
 
-  // Check 1: User Profile Endpoint (succeeds for Interactive Trading OAuth tokens)
+  // Check 1: Market Quote API v3 (primary check, bypasses profile endpoint static IP restriction)
   try {
-    const profileResp = await fetch(`${base}/v2/user/profile`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${cleanToken}`,
-      },
-    });
-
-    if (profileResp.status === 200) {
-      const data = await profileResp.json();
-      const userName = data?.data?.user_name || "User";
-      return {
-        status: "connected",
-        label: "Connected",
-        valid: true,
-        userName,
-        tokenType: "Interactive",
-      };
-    }
-  } catch (e) {
-    // Continue to check market quote endpoint
-  }
-
-  // Check 2: Market Quote Endpoint (succeeds for Analytics Tokens & Market Data Feed Tokens)
-  try {
-    const quoteResp = await fetch(`${base}/v2/market-quote/quotes?instrument_key=NSE_INDEX%7CNifty%2050`, {
+    const quoteUrl = `${base}/v3/market-quote/quotes?instrument_key=NSE_INDEX%7CNifty%2050`;
+    const quoteResp = await fetch(quoteUrl, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -241,35 +230,54 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
     });
 
     if (quoteResp.status === 200) {
+      // Token has live market data access! Attempt to get user name if profile works, else default to 'Upstox Live'
+      let userName = "Upstox Live";
+      try {
+        const pResp = await fetch(`${base}/v2/user/profile`, {
+          method: "GET",
+          headers: { Accept: "application/json", Authorization: `Bearer ${cleanToken}` },
+        });
+        if (pResp.status === 200) {
+          const pData = await pResp.json();
+          userName = pData?.data?.user_name || userName;
+        }
+      } catch (e) {}
+
       return {
         status: "connected",
-        label: "Connected",
+        label: `Connected (${userName})`,
         valid: true,
-        userName: "Analytics Token",
-        tokenType: "Analytics",
+        userName,
       };
     }
 
-    if (quoteResp.status === 401) {
+    if (quoteResp.status === 401 || quoteResp.status === 403) {
       let detail = "Token has expired or is invalid.";
+      let isIpRestricted = false;
       try {
         const errJson = await quoteResp.json();
         if (errJson?.errors?.[0]?.message) {
           detail = errJson.errors[0].message;
+          if (detail.toLowerCase().includes("static ip") || detail.toLowerCase().includes("permitted only")) {
+            isIpRestricted = true;
+          }
         }
       } catch (e) {}
+
+      if (isIpRestricted) {
+        return {
+          status: "ip_restricted",
+          label: "IP Restricted",
+          valid: false,
+          message: detail,
+        };
+      }
+
       return {
         status: "expired",
         label: "Expired",
         valid: false,
         message: detail,
-      };
-    } else {
-      return {
-        status: "error",
-        label: "Check Failed",
-        valid: false,
-        message: `HTTP error ${quoteResp.status}`,
       };
     }
   } catch (err) {
@@ -280,4 +288,11 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
       message: err.message || "Failed to reach Upstox endpoint",
     };
   }
+
+  return {
+    status: "expired",
+    label: "Expired",
+    valid: false,
+    message: "Token has expired or is invalid.",
+  };
 }

@@ -13,7 +13,10 @@ function getBaseUrl(proxyUrl = "") {
 }
 
 function sanitizeToken(token) {
-  return (token || "").trim().replace(/^Bearer\s+/i, "");
+  return String(token || "")
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/[\r\n\t "']/g, "");
 }
 
 /**
@@ -57,6 +60,7 @@ async function fetchWithBackoff(url, options = {}, maxRetries = 3, notifyOn401 =
 
 /**
  * Fetch market quotes in batches (max 50 instruments per request).
+ * Uses Upstox Market Data API v3 (/v3/market-quote/quotes).
  */
 export async function fetchMarketQuotes(instrumentKeys, token, proxyUrl = "") {
   if (!token || !instrumentKeys || instrumentKeys.length === 0) return {};
@@ -73,7 +77,7 @@ export async function fetchMarketQuotes(instrumentKeys, token, proxyUrl = "") {
 
   for (let i = 0; i < instrumentKeys.length; i += batchSize) {
     const batch = instrumentKeys.slice(i, i + batchSize);
-    const url = `${base}/v2/market-quote/quotes?instrument_key=${encodeURIComponent(batch.join(","))}`;
+    const url = `${base}/v3/market-quote/quotes?instrument_key=${encodeURIComponent(batch.join(","))}`;
 
     try {
       const resp = await fetchWithBackoff(url, { method: "GET", headers });

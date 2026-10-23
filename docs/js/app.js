@@ -245,7 +245,10 @@ function openSettingsModal() {
   const s = state.settings;
   const tokenInput = document.getElementById("setting-token-input");
   if (tokenInput) {
-    if (state.tokenStatus === "expired" || s.isStale) {
+    if (state.tokenStatus === "ip_restricted") {
+      tokenInput.value = s.token ? maskToken(s.token) : "";
+      tokenInput.placeholder = "Static IP restricted in Upstox account";
+    } else if (state.tokenStatus === "expired" || s.isStale) {
       tokenInput.value = "";
       tokenInput.placeholder = "Token expired - paste new daily token";
     } else {
@@ -327,6 +330,17 @@ async function initSettingsAndToken() {
     // Switch to live mode and fetch real-time quotes
     await fetchAndUpdateLiveQuotes();
     startPollingQuotes();
+  } else if (validation.status === "ip_restricted") {
+    state.tokenStatus = "ip_restricted";
+    updateElementWithStatePill(tokenPill, "reject", "Token: IP Restricted");
+    updateElementWithStatePill(dataPill, "info", "Data: EOD");
+    if (eodBanner) eodBanner.style.display = "flex";
+    showToast(`Upstox: ${validation.message}`);
+
+    if (!state.hasPromptedOnLoad) {
+      state.hasPromptedOnLoad = true;
+      openSettingsModal();
+    }
   } else if (validation.status === "expired") {
     state.tokenStatus = "expired";
     updateElementWithStatePill(tokenPill, "reject", "Token: Expired");

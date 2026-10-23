@@ -343,12 +343,13 @@
         <div class="form-group">
           <label for="setting-token-input" class="form-label">Upstox Bearer Access Token</label>
           <input type="password" id="setting-token-input" class="form-input" placeholder="Paste daily Upstox token here" autocomplete="off">
-          <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.4; display: block;">Shown masked (last 4 characters). Stored only in this browser. Upstox access tokens expire daily at ~03:30 AM IST and must be generated fresh each trading day.</span>
+          <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.4; display: block;">Shown masked (last 4 characters). Stored only in this browser. Supports both 1-year Upstox Analytics Tokens and daily Interactive OAuth tokens.</span>
         </div>
 
         <div class="form-group">
           <label for="setting-proxy-input" class="form-label">Optional Proxy URL (Cloudflare Worker)</label>
           <input type="text" id="setting-proxy-input" class="form-input" placeholder="Leave empty for direct browser Upstox API calls" autocomplete="off">
+          <span style="font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.4; display: block;">If your Upstox account enforces a Static IP, route requests through a proxy with your whitelisted IP (deploy via /proxy/worker.js).</span>
         </div>
 
         <div class="form-group">
