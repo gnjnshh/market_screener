@@ -12,10 +12,14 @@ function getBaseUrl(proxyUrl = "") {
   return proxyUrl ? proxyUrl.trim().replace(/\/+$/, "") : DEFAULT_API_BASE;
 }
 
+function sanitizeToken(token) {
+  return (token || "").trim().replace(/^Bearer\s+/i, "");
+}
+
 /**
  * Execute HTTP request with exponential backoff on 429 and 5xx errors.
  */
-async function fetchWithBackoff(url, options = {}, maxRetries = 3) {
+async function fetchWithBackoff(url, options = {}, maxRetries = 3, notifyOn401 = true) {
   let attempt = 0;
   let delay = 1000;
 
@@ -25,7 +29,9 @@ async function fetchWithBackoff(url, options = {}, maxRetries = 3) {
 
       if (response.status === 401) {
         // Token expired or invalid
-        window.dispatchEvent(new CustomEvent("voledge:token-expired"));
+        if (notifyOn401) {
+          window.dispatchEvent(new CustomEvent("voledge:token-expired"));
+        }
         return response;
       }
 
@@ -55,10 +61,11 @@ async function fetchWithBackoff(url, options = {}, maxRetries = 3) {
 export async function fetchMarketQuotes(instrumentKeys, token, proxyUrl = "") {
   if (!token || !instrumentKeys || instrumentKeys.length === 0) return {};
 
+  const cleanToken = sanitizeToken(token);
   const base = getBaseUrl(proxyUrl);
   const headers = {
     Accept: "application/json",
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${cleanToken}`,
   };
 
   const results = {};
@@ -93,6 +100,7 @@ export async function fetchMarketQuotes(instrumentKeys, token, proxyUrl = "") {
 export async function fetchOptionChain(instrumentKey, expiryDate, token, proxyUrl = "") {
   if (!token || !instrumentKey || !expiryDate) return null;
 
+  const cleanToken = sanitizeToken(token);
   const base = getBaseUrl(proxyUrl);
   const url = `${base}/v2/option/chain?instrument_key=${encodeURIComponent(instrumentKey)}&expiry_date=${encodeURIComponent(expiryDate)}`;
 
@@ -101,7 +109,7 @@ export async function fetchOptionChain(instrumentKey, expiryDate, token, proxyUr
       method: "GET",
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${cleanToken}`,
       },
     });
 
@@ -123,6 +131,7 @@ export async function fetchOptionChain(instrumentKey, expiryDate, token, proxyUr
 export async function fetchHistoricalCandles(instrumentKey, interval, toDate, fromDate, token, proxyUrl = "") {
   if (!token || !instrumentKey) return null;
 
+  const cleanToken = sanitizeToken(token);
   const base = getBaseUrl(proxyUrl);
   const url = `${base}/v2/historical-candle/${encodeURIComponent(instrumentKey)}/${interval}/${toDate}/${fromDate}`;
 
@@ -131,7 +140,7 @@ export async function fetchHistoricalCandles(instrumentKey, interval, toDate, fr
       method: "GET",
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${cleanToken}`,
       },
     });
 
@@ -156,6 +165,7 @@ export async function fetchHistoricalCandles(instrumentKey, interval, toDate, fr
 export async function fetchMarginRequirement(instrumentKey, quantity, price, token, proxyUrl = "") {
   if (!token || !instrumentKey || quantity <= 0) return null;
 
+  const cleanToken = sanitizeToken(token);
   const base = getBaseUrl(proxyUrl);
   const url = `${base}/v2/charges/margin`;
 
@@ -172,17 +182,18 @@ export async function fetchMarginRequirement(instrumentKey, quantity, price, tok
   };
 
   try {
+    // Set notifyOn401 = false so that margin permission restrictions on Analytics Tokens do not drop quote streaming
     const resp = await fetchWithBackoff(url, {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${cleanToken}`,
       },
       body: JSON.stringify(payload),
-    });
+    }, 2, false);
 
-    if (resp.status === 200) {
+    if (resp && resp.status === 200) {
       const json = await resp.json();
       const margins = json.data?.margins || [];
       if (margins.length > 0) {
@@ -190,7 +201,7 @@ export async function fetchMarginRequirement(instrumentKey, quantity, price, tok
       }
     }
   } catch (e) {
-    // Fall back to SPAN proxy
+    // Fall back to SPAN proxy calculation
   }
 
   return null;

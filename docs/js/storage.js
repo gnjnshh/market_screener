@@ -1,6 +1,7 @@
 /**
  * Storage and settings manager for VolEdge India.
  * Handles Upstox token persistence, masking, expiry checking,
+ * JWT decoding for 1-year Analytics Tokens and daily OAuth tokens,
  * and security isolation (localStorage vs sessionStorage).
  *
  * Security:
@@ -39,11 +40,36 @@ export function getTodayDateString() {
 }
 
 /**
+ * Parse JWT token payload safely in browser.
+ * Upstox tokens (both 1-year Analytics Tokens and daily OAuth tokens) are JWTs.
+ * Extracts exp (UNIX expiration timestamp in seconds).
+ */
+export function parseJwt(token) {
+  if (!token) return null;
+  try {
+    const clean = token.trim().replace(/^Bearer\s+/i, "");
+    const parts = clean.split(".");
+    if (parts.length < 2) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * Mask access token showing only the last 4 characters.
  */
 export function maskToken(token) {
   if (!token) return "";
-  const trimmed = token.trim();
+  const trimmed = token.trim().replace(/^Bearer\s+/i, "");
   if (trimmed.length <= 4) return trimmed;
   const last4 = trimmed.slice(-4);
   return `••••••••••••${last4}`;
@@ -51,6 +77,7 @@ export function maskToken(token) {
 
 /**
  * Load settings and token from localStorage or sessionStorage.
+ * Accurately determines expiration for both 1-year Analytics Tokens and 1-day OAuth tokens.
  */
 export function loadSettings() {
   const remember = localStorage.getItem(STORAGE_KEYS.REMEMBER) === "true";
@@ -70,10 +97,22 @@ export function loadSettings() {
     tokenDate = "";
   }
 
-  const isStale = Boolean(token && tokenDate && tokenDate < getTodayDateString());
+  // Check token expiration:
+  // 1. If token is a JWT (like Upstox Analytics Tokens or daily OAuth tokens), check actual cryptographic exp!
+  let isStale = false;
+  if (token) {
+    const payload = parseJwt(token);
+    if (payload && typeof payload.exp === "number") {
+      // Expired ONLY if current system time has passed the exp timestamp
+      isStale = Date.now() >= payload.exp * 1000;
+    } else if (tokenDate) {
+      // Fallback for non-JWT tokens: check daily trading day expiration
+      isStale = tokenDate < getTodayDateString();
+    }
+  }
 
   return {
-    token: token.trim(),
+    token: token.trim().replace(/^Bearer\s+/i, ""),
     tokenDate,
     remember,
     proxyUrl: proxyUrl.trim(),
@@ -138,20 +177,37 @@ export function clearAllData() {
 }
 
 /**
- * Validate Upstox token using the lightweight user profile endpoint.
+ * Validate Upstox token.
+ * Supports both:
+ * 1. Interactive / Trading OAuth Tokens (via /v2/user/profile)
+ * 2. Analytics Tokens / Market Data Feed Tokens (via /v2/market-quote/quotes)
  */
 export async function validateUpstoxToken(token, proxyUrl = "") {
   if (!token) {
     return { status: "not_set", label: "Not set", valid: false };
   }
 
-  // Sanitize token to avoid double Bearer
   const cleanToken = token.trim().replace(/^Bearer\s+/i, "");
-  const base = proxyUrl ? proxyUrl.replace(/\/+$/, "") : "https://api.upstox.com";
-  const url = `${base}/v2/user/profile`;
 
+  // If token is a JWT, check exp timestamp first
+  const payload = parseJwt(cleanToken);
+  if (payload && typeof payload.exp === "number") {
+    if (Date.now() >= payload.exp * 1000) {
+      const expDate = new Date(payload.exp * 1000).toLocaleDateString();
+      return {
+        status: "expired",
+        label: "Expired",
+        valid: false,
+        message: `Token expired on ${expDate}. Please generate a new token.`,
+      };
+    }
+  }
+
+  const base = proxyUrl ? proxyUrl.replace(/\/+$/, "") : "https://api.upstox.com";
+
+  // Check 1: User Profile Endpoint (succeeds for Interactive Trading OAuth tokens)
   try {
-    const response = await fetch(url, {
+    const profileResp = await fetch(`${base}/v2/user/profile`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -159,19 +215,45 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
       },
     });
 
-    if (response.status === 200) {
-      const data = await response.json();
+    if (profileResp.status === 200) {
+      const data = await profileResp.json();
       const userName = data?.data?.user_name || "User";
       return {
         status: "connected",
         label: "Connected",
         valid: true,
         userName,
+        tokenType: "Interactive",
       };
-    } else if (response.status === 401) {
+    }
+  } catch (e) {
+    // Continue to check market quote endpoint
+  }
+
+  // Check 2: Market Quote Endpoint (succeeds for Analytics Tokens & Market Data Feed Tokens)
+  try {
+    const quoteResp = await fetch(`${base}/v2/market-quote/quotes?instrument_key=NSE_INDEX%7CNifty%2050`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${cleanToken}`,
+      },
+    });
+
+    if (quoteResp.status === 200) {
+      return {
+        status: "connected",
+        label: "Connected",
+        valid: true,
+        userName: "Analytics Token",
+        tokenType: "Analytics",
+      };
+    }
+
+    if (quoteResp.status === 401) {
       let detail = "Token has expired or is invalid.";
       try {
-        const errJson = await response.json();
+        const errJson = await quoteResp.json();
         if (errJson?.errors?.[0]?.message) {
           detail = errJson.errors[0].message;
         }
@@ -187,7 +269,7 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
         status: "error",
         label: "Check Failed",
         valid: false,
-        message: `HTTP error ${response.status}`,
+        message: `HTTP error ${quoteResp.status}`,
       };
     }
   } catch (err) {
