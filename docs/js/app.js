@@ -297,20 +297,11 @@ async function initSettingsAndToken() {
   }
 
   if (state.settings.isStale) {
-    state.tokenStatus = "expired";
-    updateElementWithStatePill(tokenPill, "reject", "Token: Expired");
-    updateElementWithStatePill(dataPill, "info", "Data: EOD");
-    if (eodBanner) eodBanner.style.display = "flex";
-    showToast("Token from previous day, please refresh in Settings");
-
-    if (!state.hasPromptedOnLoad) {
-      state.hasPromptedOnLoad = true;
-      openSettingsModal();
-    }
-    return;
+    showToast("Token from previous day, checking status with Upstox...");
+    updateElementWithStatePill(tokenPill, "info", "Token: Validating previous day token...");
+  } else {
+    updateElementWithStatePill(tokenPill, "info", "Token: Validating...");
   }
-
-  updateElementWithStatePill(tokenPill, "info", "Token: Validating...");
 
   const validation = await validateUpstoxToken(state.settings.token, state.settings.proxyUrl);
   state.tokenStatus = validation.status;
@@ -321,14 +312,30 @@ async function initSettingsAndToken() {
     updateElementWithStatePill(dataPill, "pass", "Data: Live (Upstox)");
     if (eodBanner) eodBanner.style.display = "none";
 
+    // Refresh stored date to today if validated
+    if (state.settings.isStale) {
+      saveSettings({
+        token: state.settings.token,
+        remember: state.settings.remember,
+        proxyUrl: state.settings.proxyUrl,
+        capital: state.settings.capital,
+        theme: state.settings.theme,
+      });
+      state.settings = loadSettings();
+    }
+
     // Switch to live mode and fetch real-time quotes
     await fetchAndUpdateLiveQuotes();
     startPollingQuotes();
   } else if (validation.status === "expired") {
+    state.tokenStatus = "expired";
     updateElementWithStatePill(tokenPill, "reject", "Token: Expired");
     updateElementWithStatePill(dataPill, "info", "Data: EOD");
     if (eodBanner) eodBanner.style.display = "flex";
-    showToast("Upstox token expired. Please refresh in Settings");
+    const msg = state.settings.isStale
+      ? "Token from previous day expired. Please refresh in Settings."
+      : (validation.message || "Upstox token expired. Please refresh in Settings.");
+    showToast(msg);
 
     if (!state.hasPromptedOnLoad) {
       state.hasPromptedOnLoad = true;

@@ -85,6 +85,7 @@ export function loadSettings() {
 
 /**
  * Save settings and token according to 'remember' preference.
+ * When saving, stamps today's date in IST so active tokens are never trapped in stale status.
  */
 export function saveSettings({ token, remember, proxyUrl, capital, theme }) {
   // Always store non-sensitive config in localStorage
@@ -96,29 +97,19 @@ export function saveSettings({ token, remember, proxyUrl, capital, theme }) {
   const todayStr = getTodayDateString();
 
   if (token !== undefined) {
-    const cleanToken = (token || "").trim();
+    // Sanitize token: remove leading "Bearer " prefix if user pasted it
+    const cleanToken = (token || "").trim().replace(/^Bearer\s+/i, "");
     if (cleanToken) {
-      const existingToken =
-        localStorage.getItem(STORAGE_KEYS.TOKEN) ||
-        sessionStorage.getItem(STORAGE_KEYS.TOKEN) ||
-        "";
-      const existingDate =
-        localStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
-        sessionStorage.getItem(STORAGE_KEYS.TOKEN_DATE) ||
-        "";
-      const isNewToken = cleanToken !== existingToken.trim();
-      const dateToStore = (isNewToken || !existingDate) ? todayStr : existingDate;
-
       if (remember) {
         sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
         sessionStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
         localStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
-        localStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
+        localStorage.setItem(STORAGE_KEYS.TOKEN_DATE, todayStr);
       } else {
         localStorage.removeItem(STORAGE_KEYS.TOKEN);
         localStorage.removeItem(STORAGE_KEYS.TOKEN_DATE);
         sessionStorage.setItem(STORAGE_KEYS.TOKEN, cleanToken);
-        sessionStorage.setItem(STORAGE_KEYS.TOKEN_DATE, dateToStore);
+        sessionStorage.setItem(STORAGE_KEYS.TOKEN_DATE, todayStr);
       }
     } else {
       clearToken();
@@ -154,6 +145,8 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
     return { status: "not_set", label: "Not set", valid: false };
   }
 
+  // Sanitize token to avoid double Bearer
+  const cleanToken = token.trim().replace(/^Bearer\s+/i, "");
   const base = proxyUrl ? proxyUrl.replace(/\/+$/, "") : "https://api.upstox.com";
   const url = `${base}/v2/user/profile`;
 
@@ -162,7 +155,7 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
       method: "GET",
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${cleanToken}`,
       },
     });
 
@@ -176,11 +169,18 @@ export async function validateUpstoxToken(token, proxyUrl = "") {
         userName,
       };
     } else if (response.status === 401) {
+      let detail = "Token has expired or is invalid.";
+      try {
+        const errJson = await response.json();
+        if (errJson?.errors?.[0]?.message) {
+          detail = errJson.errors[0].message;
+        }
+      } catch (e) {}
       return {
         status: "expired",
         label: "Expired",
         valid: false,
-        message: "Token has expired or is invalid.",
+        message: detail,
       };
     } else {
       return {
