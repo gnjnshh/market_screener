@@ -1,13 +1,13 @@
 {
-  "last_updated": "2026-11-06 19:52:03 IST",
-  "timestamp_utc": "2026-11-06T19:52:03.926686+00:00",
-  "market_status": "Closed",
+  "last_updated": "2026-11-09 12:11:02 IST",
+  "timestamp_utc": "2026-11-09T12:11:02.134037+00:00",
+  "market_status": "Open",
   "data_status": "Success",
   "total_symbols_scanned": 45,
   "valid_rows_count": 45,
-  "qualified_count": 15,
+  "qualified_count": 16,
   "watch_count": 1,
-  "rejected_count": 29,
+  "rejected_count": 28,
   "schema_version": "1.0.0",
   "rejected_rows": [],
   "errors": []
